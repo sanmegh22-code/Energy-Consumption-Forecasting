@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Energy Consumption Estimation System</title>
+    <style>
+        body { font-family: Arial; background: linear-gradient(135deg,#1f4037,#99f2c8); }
+        .container { width: 85%; margin: 40px auto; background: white; padding: 30px; border-radius: 10px; }
+        .section { background: #f2f2f2; padding: 20px; margin-bottom: 20px; border-radius: 8px; }
+        button { padding: 8px 15px; background: #1f4037; color: white; border: none; border-radius: 5px; cursor: pointer; }
+        input { width: 100%; padding: 8px; margin-bottom: 10px; }
+        .box { margin-top: 20px; padding: 15px; background: #eafaf1; border-radius: 8px; }
+        .prediction { background:#d4edda; border:2px solid #28a745; padding:15px; border-radius:8px; }
+    </style>
+</head>
+
+<body>
+<div class="container">
+
+<h1>⚡ Energy Consumption Estimation System</h1>
+
+<div class="section">
+    <h3>Train with Predefined Dataset</h3>
+    <form action="/train_predefined" method="post">
+        <button type="submit">Train Model</button>
+    </form>
+</div>
+
+<div class="section">
+    <h3>Upload Custom Dataset</h3>
+    <form action="/upload" method="post" enctype="multipart/form-data">
+        <input type="file" name="dataset" required>
+        <button type="submit">Upload & Train</button>
+    </form>
+</div>
+
+{% if r2 %}
+<div class="box">
+    <h3>Model Evaluation Details</h3>
+    <p><strong>Selected Model:</strong> {{ model_name }}</p>
+    <p><strong>Training Samples:</strong> {{ train_size }}</p>
+    <p><strong>Testing Samples:</strong> {{ test_size }}</p>
+    <p><strong>R² Score:</strong> {{ r2 }}</p>
+    <p><strong>MAE:</strong> {{ mae }}</p>
+    <p><strong>RMSE:</strong> {{ rmse }}</p>
+
+    <h4>Feature Importance</h4>
+    <ul>
+        {% for feature, value in feature_importance.items() %}
+            <li>{{ feature }} : {{ "%.3f"|format(value) }}</li>
+        {% endfor %}
+    </ul>
+</div>
+{% endif %}
+
+{% if actual_sample %}
+<div class="box" style="background:#fff3cd;">
+    <h3>Sample Prediction Comparison (From Test Dataset)</h3>
+    <p><strong>Actual Energy:</strong> {{ actual_sample }} Wh</p>
+    <p><strong>Predicted:</strong> {{ predicted_sample }} Wh</p>
+    <p><strong>Error:</strong> {{ sample_error }} Wh</p>
+</div>
+{% endif %}
+
+<div class="section">
+    <h3>Predict Appliance Electricity Consumption</h3>
+    <form action="/predict" method="post">
+        <input type="number" step="any" name="T1" placeholder="Temperature Room 1 (°C)" required>
+        <input type="number" step="any" name="RH_1" placeholder="Humidity Room 1 (%)" required>
+        <input type="number" step="any" name="T2" placeholder="Temperature Room 2 (°C)" required>
+        <input type="number" step="any" name="RH_2" placeholder="Humidity Room 2 (%)" required>
+        <button type="submit">Predict Energy</button>
+    </form>
+
+    {% if result %}
+    <div class="prediction">
+        <h2>Prediction Result</h2>
+        <p><strong>Predicted:</strong> {{ energy_wh }} Wh ({{ energy_kwh }} kWh)</p>
+        <p><strong>Usage Level:</strong> {{ level }}</p>
+    </div>
+    {% endif %}
+</div>
+
+</div>
+</body>
+</html>
