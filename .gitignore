@@ -1,0 +1,4 @@
+uploads/
+*.pkl
+*.crdownload
+__pycache__/
