@@ -1,6 +1,6 @@
 Flask
 pandas
-numpy
 scikit-learn
+reportlab
 gunicorn
 openpyxl
