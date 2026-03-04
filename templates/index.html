@@ -57,7 +57,6 @@ border-radius:8px;
 <p style="color:blue">{{message}}</p>
 {% endif %}
 
-<!-- TRAIN PREDEFINED -->
 <div class="box">
 
 <h3>Train with Predefined Dataset</h3>
@@ -68,8 +67,6 @@ border-radius:8px;
 
 </div>
 
-
-<!-- UPLOAD DATASET -->
 <div class="box">
 
 <h3>Upload Custom Dataset</h3>
@@ -85,19 +82,17 @@ border-radius:8px;
 
 </div>
 
-
-<!-- PREDICTION -->
 <div class="box">
 
 <h3>Predict Energy Consumption</h3>
 
 <form action="/predict" method="post">
 
-Temperature 1 <input type="number" step="any" name="T1"><br><br>
-Humidity 1 <input type="number" step="any" name="RH_1"><br><br>
+Temperature 1 <input type="number" step="any" name="T1" required><br><br>
+Humidity 1 <input type="number" step="any" name="RH_1" required><br><br>
 
-Temperature 2 <input type="number" step="any" name="T2"><br><br>
-Humidity 2 <input type="number" step="any" name="RH_2"><br><br>
+Temperature 2 <input type="number" step="any" name="T2" required><br><br>
+Humidity 2 <input type="number" step="any" name="RH_2" required><br><br>
 
 <button type="submit">Predict</button>
 
@@ -105,14 +100,12 @@ Humidity 2 <input type="number" step="any" name="RH_2"><br><br>
 
 </div>
 
-
 {% if result %}
 <div class="box">
 <h3>Prediction Result</h3>
 <p>{{result}}</p>
 </div>
 {% endif %}
-
 
 {% if accuracy %}
 <div class="box">
@@ -131,8 +124,6 @@ Humidity 2 <input type="number" step="any" name="RH_2"><br><br>
 </div>
 {% endif %}
 
-
-
 {% if actual_values %}
 
 <div class="box">
@@ -145,27 +136,27 @@ Humidity 2 <input type="number" step="any" name="RH_2"><br><br>
 
 <script>
 
-const ctx=document.getElementById('energyChart');
+const ctx = document.getElementById('energyChart').getContext('2d');
 
 new Chart(ctx,{
 
 type:'line',
 
 data:{
-labels:{{ range(1,actual_values|length+1)|list }},
+labels: {{ range(1, actual_values|length + 1) | list | tojson }},
 
 datasets:[
 
 {
 label:'Actual',
-data:{{actual_values}},
+data: {{ actual_values | tojson }},
 borderColor:'green',
 fill:false
 },
 
 {
 label:'Predicted',
-data:{{predicted_values}},
+data: {{ predicted_values | tojson }},
 borderColor:'red',
 fill:false
 }
