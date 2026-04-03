@@ -1,6 +1,7 @@
-Flask
+flask
 pandas
 scikit-learn
+matplotlib
 reportlab
 gunicorn
 openpyxl
