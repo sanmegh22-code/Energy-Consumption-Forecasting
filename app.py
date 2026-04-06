@@ -1,248 +1,110 @@
 from flask import Flask, render_template, request, send_file
-import pandas as pd
-import os
-
+import pandas as pd, os, pickle, generate_report
 from sklearn.model_selection import train_test_split
-from sklearn.ensemble import RandomForestRegressor
+from sklearn.ensemble import RandomForestRegressor, GradientBoostingRegressor
 from sklearn.metrics import r2_score
-
 from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, Image
 from reportlab.lib.styles import getSampleStyleSheet
-from reportlab.lib.units import inch
-
-import generate_report
 
 app = Flask(__name__)
+os.makedirs("uploads", exist_ok=True)
+app.config["UPLOAD_FOLDER"] = "uploads"
 
-UPLOAD_FOLDER = "uploads"
-app.config["UPLOAD_FOLDER"] = UPLOAD_FOLDER
+# Global state
+state = {'model': None, 'accuracy': None, 'train_size': None, 'test_size': None,
+         'actual_values': None, 'predicted_values': None, 'last_prediction': None, 'dataset_hints': None, 'table_data': None}
 
-if not os.path.exists(UPLOAD_FOLDER):
-    os.makedirs(UPLOAD_FOLDER)
+if os.path.exists("model.pkl"):
+    try:
+        with open("model.pkl", "rb") as f:
+            state.update(pickle.load(f))
+    except: pass
 
-model = None
-accuracy = None
-train_size = None
-test_size = None
-actual_values = None
-predicted_values = None
-last_prediction = None
+def render_idx(**kw):
+    return render_template("index.html", **{**state, 'predicted_value': None, 'actual_value': None, 
+                                            'error': None, 'error_percent': None, 'result': None, 'message': None, **kw})
 
-
-# -------------------------
-# TRAIN MODEL
-# -------------------------
-def train_model(data):
-    global model, accuracy, train_size, test_size, actual_values, predicted_values
-
-    features = ["T1", "RH_1", "T2", "RH_2"]
-    target = "Appliances"
-
-    X = data[features]
-    y = data[target]
-
-    X_train, X_test, y_train, y_test = train_test_split(
-        X, y, test_size=0.2, random_state=42
-    )
-
-    train_size = len(X_train)
-    test_size = len(X_test)
-
-    model = RandomForestRegressor(n_estimators=100, random_state=42)
+def train_model(data, model_type="RandomForest"):
+    state['dataset_hints'] = {col: f"{data[col].min():.1f} - {data[col].max():.1f}" for col in ["T1", "RH_1", "T2", "RH_2"]}
+    X, y = data[["T1", "RH_1", "T2", "RH_2"]], data["Appliances"]
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+    
+    model = GradientBoostingRegressor(n_estimators=100, random_state=42) if model_type == "GradientBoosting" else RandomForestRegressor(n_estimators=100, random_state=42)
     model.fit(X_train, y_train)
-
     y_pred = model.predict(X_test)
+    
+    act_list = y_test[:20].tolist()
+    pred_list = y_pred[:20].tolist()
+    tbl = [{"actual": round(a, 2), "predicted": round(p, 2), "error": round(abs(a-p), 2)} for a, p in zip(act_list, pred_list)]
+    
+    state.update({
+        'model': model, 'accuracy': round(r2_score(y_test, y_pred), 3),
+        'train_size': len(X_train), 'test_size': len(X_test),
+        'actual_values': act_list, 'predicted_values': pred_list,
+        'table_data': tbl
+    })
+    generate_report.create_training_graph(state['actual_values'], state['predicted_values'])
+    with open("model.pkl", "wb") as f: pickle.dump(state, f)
 
-    accuracy = round(r2_score(y_test, y_pred), 3)
-
-    actual_values = y_test[:20].tolist()
-    predicted_values = y_pred[:20].tolist()
-
-    generate_report.create_training_graph(actual_values, predicted_values)
-
-
-# -------------------------
-# HOME
-# -------------------------
 @app.route("/")
-def home():
-    return render_template(
-        "index.html",
-        accuracy=accuracy,
-        train_size=train_size,
-        test_size=test_size,
-        actual_values=actual_values,
-        predicted_values=predicted_values
-    )
+def home(): return render_idx()
 
-
-# -------------------------
-# TRAIN PREDEFINED DATASET
-# -------------------------
 @app.route("/train_predefined", methods=["POST"])
 def train_predefined():
+    m_type = request.form.get("model_type", "RandomForest")
+    merged_file = "energydata_master.csv"
+    data_file = merged_file if os.path.exists(merged_file) else "energydata_complete.csv"
+    train_model(pd.read_csv(data_file, encoding="latin1"), m_type)
+    return render_idx(message=f"{m_type} trained successfully on current knowledge base!")
 
-    try:
-        data = pd.read_csv("energydata_complete.csv", encoding="latin1")
-
-        train_model(data)
-
-        return render_template(
-            "index.html",
-            message="Predefined dataset trained successfully!",
-            accuracy=accuracy,
-            train_size=train_size,
-            test_size=test_size,
-            actual_values=actual_values,
-            predicted_values=predicted_values
-        )
-
-    except Exception as e:
-        return render_template("index.html", message=str(e))
-
-
-# -------------------------
-# UPLOAD DATASET
-# -------------------------
 @app.route("/upload", methods=["POST"])
 def upload():
-
+    file, m_type = request.files.get("dataset"), request.form.get("model_type", "RandomForest")
+    if not file: return render_idx(message="No file selected")
+    path = os.path.join(app.config["UPLOAD_FOLDER"], file.filename)
+    file.save(path)
     try:
-        file = request.files["dataset"]
+        new_data = pd.read_csv(path) if path.endswith(".csv") else pd.read_excel(path)
+        base_file = "energydata_complete.csv"
+        merged_file = "energydata_master.csv"
+        current_data = pd.read_csv(merged_file if os.path.exists(merged_file) else base_file, encoding="latin1")
+        
+        # Combine datasets to "learn from it" continually
+        combined_data = pd.concat([current_data, new_data], ignore_index=True)
+        combined_data.to_csv(merged_file, index=False)
+        
+        train_model(combined_data, m_type)
+        return render_idx(message=f"Dataset appended! Model upgraded and learned from expanded data using {m_type}.")
+    except Exception as e: return render_idx(message=f"Error: {e}")
 
-        if not file:
-            return render_template("index.html", message="No file selected")
-
-        filepath = os.path.join(app.config["UPLOAD_FOLDER"], file.filename)
-        file.save(filepath)
-
-        if file.filename.endswith(".csv"):
-            data = pd.read_csv(filepath)
-
-        elif file.filename.endswith(".xlsx"):
-            data = pd.read_excel(filepath)
-
-        else:
-            return render_template("index.html", message="Unsupported file type")
-
-        train_model(data)
-
-        return render_template(
-            "index.html",
-            message="Custom dataset trained successfully!",
-            accuracy=accuracy,
-            train_size=train_size,
-            test_size=test_size,
-            actual_values=actual_values,
-            predicted_values=predicted_values
-        )
-
-    except Exception as e:
-        return render_template("index.html", message=str(e))
-
-
-# -------------------------
-# PREDICT ENERGY
-# -------------------------
 @app.route("/predict", methods=["POST"])
 def predict():
+    if not state.get('model'): return render_idx(message="Train model first!")
+    try: inputs = [float(request.form[k]) for k in ["T1", "RH_1", "T2", "RH_2"]]
+    except: return render_idx(message="Invalid inputs.")
+    
+    energy_wh = round(state['model'].predict([inputs])[0], 2)
+    state['last_prediction'] = energy_wh
+    
+    act_val = round(state['actual_values'][0], 2) if state['actual_values'] else 0
+    err = round(abs(act_val - energy_wh), 2)
+    err_pct = round((err / act_val) * 100, 2) if act_val else 0
+    lvl = "Low" if energy_wh < 100 else "Moderate" if energy_wh < 300 else "High"
+    
+    generate_report.create_prediction_graph(energy_wh)
+    with open("model.pkl", "wb") as f: pickle.dump(state, f)
+    
+    return render_idx(result=f"Usage Level: {lvl} Usage", predicted_value=energy_wh, 
+                      actual_value=act_val, error=err, error_percent=err_pct)
 
-    global model, last_prediction
-
-    if model is None:
-        return render_template("index.html", message="Train the model first!")
-
-    try:
-        t1 = float(request.form["T1"])
-        rh1 = float(request.form["RH_1"])
-        t2 = float(request.form["T2"])
-        rh2 = float(request.form["RH_2"])
-
-        prediction = model.predict([[t1, rh1, t2, rh2]])
-
-        energy_wh = round(prediction[0], 2)
-        energy_kwh = round(energy_wh / 1000, 3)
-
-        last_prediction = energy_wh
-
-        if energy_wh < 100:
-            level = "Low Usage"
-        elif energy_wh < 300:
-            level = "Moderate Usage"
-        else:
-            level = "High Usage"
-
-        result = f"""
-Predicted Appliance Electricity Consumption
-{energy_wh} Wh ({energy_kwh} kWh)
-Usage Level: {level}
-"""
-
-        generate_report.create_prediction_graph(energy_wh)
-
-        return render_template(
-            "index.html",
-            result=result,
-            accuracy=accuracy,
-            train_size=train_size,
-            test_size=test_size,
-            actual_values=actual_values,
-            predicted_values=predicted_values
-        )
-
-    except:
-        return render_template("index.html", message="Invalid input values")
-
-
-# -------------------------
-# DOWNLOAD REPORT
-# -------------------------
 @app.route("/download_report")
 def download_report():
+    elements = [Paragraph("Energy Consumption Report", getSampleStyleSheet()["Title"]), Spacer(1, 20)]
+    elements.append(Table([["Metric", "Value"], ["R² Score", str(state['accuracy'])], ["Train Size", str(state['train_size'])],
+                           ["Test Size", str(state['test_size'])], ["Last Prediction", str(state['last_prediction'])]]))
+    for img, title in [("prediction_graph.png", "Prediction Graph"), ("training_graph.png", "Actual vs Predicted")]:
+        if os.path.exists(img): elements.extend([Spacer(1, 20), Paragraph(title, getSampleStyleSheet()["Heading2"]), Image(img, 400, 250)])
+    SimpleDocTemplate("report.pdf").build(elements)
+    return send_file("report.pdf", as_attachment=True)
 
-    file_path = "report.pdf"
-
-    doc = SimpleDocTemplate(file_path)
-
-    styles = getSampleStyleSheet()
-
-    elements = []
-
-    elements.append(Paragraph("Energy Consumption Estimation Report", styles["Title"]))
-    elements.append(Spacer(1, 20))
-
-    data = [
-        ["Model", "Random Forest Regressor"],
-        ["R² Score", str(accuracy)],
-        ["Training Samples", str(train_size)],
-        ["Testing Samples", str(test_size)],
-        ["Last Prediction (Wh)", str(last_prediction)]
-    ]
-
-    table = Table(data)
-
-    elements.append(table)
-
-    elements.append(Spacer(1, 30))
-
-    if os.path.exists("prediction_graph.png"):
-        elements.append(Paragraph("Prediction Graph", styles["Heading2"]))
-        elements.append(Image("prediction_graph.png", width=400, height=250))
-
-    if os.path.exists("training_graph.png"):
-        elements.append(Paragraph("Actual vs Predicted Graph", styles["Heading2"]))
-        elements.append(Image("training_graph.png", width=400, height=250))
-
-    doc.build(elements)
-
-    return send_file(file_path, as_attachment=True)
-
-
-# -------------------------
-# RUN SERVER
-# -------------------------
-if __name__ == "__main__":
-
-    port = int(os.environ.get("PORT", 5000))
-
-    app.run(host="0.0.0.0", port=port)
+if __name__ == "__main__": app.run(debug=True, port=5000)

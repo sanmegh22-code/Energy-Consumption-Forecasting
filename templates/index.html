@@ -1,177 +1,134 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-
-<title>Energy Consumption Estimation</title>
-
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-
-<style>
-
-body{
-font-family:Arial;
-background:linear-gradient(135deg,#2c3e50,#4ca1af);
-margin:0;
-padding:30px;
-}
-
-.container{
-background:white;
-padding:30px;
-border-radius:10px;
-max-width:900px;
-margin:auto;
-}
-
-button{
-background:#2c3e50;
-color:white;
-padding:10px 15px;
-border:none;
-border-radius:5px;
-cursor:pointer;
-}
-
-button:hover{
-background:#4ca1af;
-}
-
-.box{
-background:#f5f5f5;
-padding:20px;
-margin-top:20px;
-border-radius:8px;
-}
-
-</style>
-
+    <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Energy Consumption Forecasting</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        :root{--bg:#ffffff;--c-bg:#ffffff;--c-bd:#e2e8f0;--p:#2563eb;--p-h:#1d4ed8;--t:#0f172a;--t-m:#64748b;--s:#16a34a;--d:#dc2626}
+        body{font-family:'Inter',sans-serif;background-color:var(--bg);color:var(--t);margin:0;padding:40px 20px;min-height:100vh}
+        .header{text-align:center;margin-bottom:40px} h1{font-weight:700;font-size:2.5rem;margin:0;color:var(--t)}
+        .subtitle{color:var(--t-m);font-size:1.1rem;margin-top:10px}
+        .msg{max-width:1100px;margin:0 auto 20px;border-radius:12px;padding:15px;background:#eff6ff;border:1px solid #bfdbfe;color:var(--p);text-align:center}
+        .grid{max-width:1200px;margin:0 auto;display:grid;grid-template-columns:1fr 1fr;gap:30px}
+        .panel{background:var(--c-bg);border:1px solid var(--c-bd);border-radius:12px;padding:30px;box-shadow:0 4px 6px -1px rgba(0,0,0,.05),0 2px 4px -2px rgba(0,0,0,.05)}
+        .panel h3{margin-top:0;border-bottom:1px solid var(--c-bd);padding-bottom:12px;margin-bottom:20px;font-weight:700}
+        .form-group{margin-bottom:20px} label{display:block;margin-bottom:8px;color:var(--t);font-size:.95rem;font-weight:600}
+        input,select{width:100%;padding:12px 15px;background:#f8fafc;border:1px solid var(--c-bd);border-radius:8px;color:var(--t);font-family:inherit;outline:none;box-sizing:border-box;transition:.2s}
+        input:focus,select:focus{border-color:var(--p);background:#ffffff}
+        input[type="file"]{padding:9px;cursor:pointer} input[type="file"]::file-selector-button{background:var(--p);color:#fff;border:none;padding:8px 16px;border-radius:6px;cursor:pointer;font-weight:600}
+        .hint{font-size:.75rem;color:var(--t-m);display:block;margin-top:6px}
+        button{width:100%;background:var(--p);color:#ffffff;padding:14px;border:none;border-radius:8px;font:inherit;font-weight:600;font-size:1.05rem;cursor:pointer;transition:.2s}
+        button:hover{background:var(--p-h)} .btn-out{background:0 0;color:var(--p);border:1px solid var(--p);margin-top:15px} .btn-out:hover{background:#eff6ff}
+        .full{grid-column:1/-1} .stat-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:15px;margin-bottom:20px}
+        .stat-card{background:#f8fafc;padding:15px;border-radius:10px;border:1px solid var(--c-bd)}
+        .stat-v{font-size:1.5rem;font-weight:700;color:var(--p)} .stat-l{font-size:.8rem;color:var(--t-m)}
+        .res-hlt{font-size:2rem;color:var(--p);font-weight:700}
+        table{width:100%;border-collapse:collapse;text-align:left;font-size:0.95rem}
+        th,td{padding:12px 10px;border-bottom:1px solid var(--c-bd)} th{color:var(--t-m);font-weight:600}
+        @media (max-width:768px){.grid{grid-template-columns:1fr}}
+    </style>
 </head>
-
 <body>
+    <div class="header"><h1>Energy Forecasting</h1><div class="subtitle">AI-powered appliance energy consumption estimation</div></div>
+    {% if message %}<div class="msg">{{ message }}</div>{% endif %}
 
-<div class="container">
+    <div class="grid">
+        <div style="display:flex;flex-direction:column;gap:30px">
+            <div class="panel">
+                <h3>Train (Predefined Data)</h3>
+                <form action="/train_predefined" method="post" style="margin-bottom:20px">
+                    <div class="form-group"><label>Select Algorithm</label>
+                        <select name="model_type"><option value="RandomForest">Random Forest</option><option value="GradientBoosting">Gradient Boosting</option></select>
+                    </div><button type="submit">Train Model</button>
+                </form>
+            </div>
+            <div class="panel">
+                <h3>Train (Custom Dataset)</h3>
+                <form action="/upload" method="post" enctype="multipart/form-data">
+                    <div class="form-group"><label>Select Algorithm</label><select name="model_type"><option value="RandomForest">Random Forest</option><option value="GradientBoosting">Gradient Boosting</option></select></div>
+                    <div class="form-group"><input type="file" name="dataset" accept=".csv,.xlsx"></div>
+                    <button type="submit">Upload & Train</button>
+                </form>
+            </div>
+            {% if accuracy %}
+            <div class="panel">
+                <h3>Model Evaluation</h3>
+                <div class="stat-grid">
+                    <div class="stat-card"><div class="stat-v">{{ accuracy }}</div><div class="stat-l">R² Score</div></div>
+                    <div class="stat-card"><div class="stat-v">{{ train_size }}</div><div class="stat-l">Train Samples</div></div>
+                    <div class="stat-card"><div class="stat-v">{{ test_size }}</div><div class="stat-l">Test Samples</div></div>
+                </div>
+                <a href="/download_report" style="text-decoration:none"><button type="button" class="btn-out">Download PDF Report</button></a>
+            </div>
+            {% endif %}
+        </div>
 
-<h1>⚡ Energy Consumption Estimation System</h1>
+        <div style="display:flex;flex-direction:column;gap:30px">
+            <div class="panel">
+                <h3>Predict Energy Consumption</h3>
+                <form action="/predict" method="post">
+                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:15px">
+                        {% for f, l, p in [('T1','Temp 1 (°C)','21.5'), ('RH_1','Humidity 1 (%)','45.3'), ('T2','Temp 2 (°C)','20.0'), ('RH_2','Humidity 2 (%)','40.0')] %}
+                        <div class="form-group">
+                            <label>{{ l }}</label><input type="number" step="any" name="{{ f }}" required placeholder="e.g. {{ p }}">
+                            {% if dataset_hints %}<span class="hint">Typical: {{ dataset_hints[f] }}</span>{% endif %}
+                        </div>
+                        {% endfor %}
+                    </div><button type="submit" style="margin-top:10px">Generate Prediction</button>
+                </form>
+            </div>
 
-{% if message %}
-<p style="color:blue">{{message}}</p>
-{% endif %}
+            {% if result %}
+            <div class="panel" style="border-color:#bbf7d0;background:#f0fdf4">
+                <h3>Prediction Result</h3>
+                <div class="res-hlt">{{ predicted_value }} Wh</div>
+                <div style="color:var(--s);font-weight:600;margin-bottom:20px">{{ result }}</div>
+                <div class="stat-grid" style="margin-bottom:0">
+                    <div class="stat-card" style="background:#fff"><div class="stat-v" style="color:var(--t)">{{ actual_value }} Wh</div><div class="stat-l">Actual</div></div>
+                    <div class="stat-card" style="background:#fff"><div class="stat-v" style="color:var(--d)">{{ error }} Wh</div><div class="stat-l">Error ({{ error_percent }}%)</div></div>
+                </div>
+            </div>
+            {% endif %}
+        </div>
 
-<div class="box">
+        {% if table_data %}
+        <div class="panel full">
+            <h3>Actual vs Predicted Visualizer</h3>
+            <table>
+                <thead>
+                    <tr><th>Row Sample</th><th>Actual Usage (Wh)</th><th>Predicted Usage (Wh)</th><th>Variance Error (Wh)</th></tr>
+                </thead>
+                <tbody>
+                    {% for row in table_data %}
+                    <tr>
+                        <td style="color:var(--t-m)">#{{ loop.index }}</td>
+                        <td style="font-weight:600">{{ row.actual }}</td>
+                        <td style="color:var(--p);font-weight:600">{{ row.predicted }}</td>
+                        <td style="color:var(--d)">{{ row.error }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% endif %}
 
-<h3>Train with Predefined Dataset</h3>
-
-<form action="/train_predefined" method="post">
-<button type="submit">Train Model</button>
-</form>
-
-</div>
-
-<div class="box">
-
-<h3>Upload Custom Dataset</h3>
-
-<form action="/upload" method="post" enctype="multipart/form-data">
-
-<input type="file" name="dataset">
-<br><br>
-
-<button type="submit">Upload & Train</button>
-
-</form>
-
-</div>
-
-<div class="box">
-
-<h3>Predict Energy Consumption</h3>
-
-<form action="/predict" method="post">
-
-Temperature 1 <input type="number" step="any" name="T1" required><br><br>
-Humidity 1 <input type="number" step="any" name="RH_1" required><br><br>
-
-Temperature 2 <input type="number" step="any" name="T2" required><br><br>
-Humidity 2 <input type="number" step="any" name="RH_2" required><br><br>
-
-<button type="submit">Predict</button>
-
-</form>
-
-</div>
-
-{% if result %}
-<div class="box">
-<h3>Prediction Result</h3>
-<p>{{result}}</p>
-</div>
-{% endif %}
-
-{% if accuracy %}
-<div class="box">
-
-<h3>Model Evaluation</h3>
-
-<p>Model Used: Random Forest Regressor</p>
-<p>Training Samples: {{train_size}}</p>
-<p>Testing Samples: {{test_size}}</p>
-<p>R² Score: {{accuracy}}</p>
-
-<a href="/download_report">
-<button>Download PDF Report</button>
-</a>
-
-</div>
-{% endif %}
-
-{% if actual_values %}
-
-<div class="box">
-
-<h3>Actual vs Predicted Graph</h3>
-
-<canvas id="energyChart"></canvas>
-
-</div>
-
-<script>
-
-const ctx = document.getElementById('energyChart').getContext('2d');
-
-new Chart(ctx,{
-
-type:'line',
-
-data:{
-labels: {{ range(1, actual_values|length + 1) | list | tojson }},
-
-datasets:[
-
-{
-label:'Actual',
-data: {{ actual_values | tojson }},
-borderColor:'green',
-fill:false
-},
-
-{
-label:'Predicted',
-data: {{ predicted_values | tojson }},
-borderColor:'red',
-fill:false
-}
-
-]
-
-}
-
-});
-
-</script>
-
-{% endif %}
-
-</div>
-
+        {% if actual_values %}
+        <div class="panel full">
+            <h3>Performance Chart</h3>
+            <div style="height:350px"><canvas id="Chart"></canvas></div>
+        </div>
+        <script>
+            Chart.defaults.color='#64748b'; Chart.defaults.font.family="'Inter',sans-serif";
+            new Chart(document.getElementById('Chart'),{ type:'line',
+                data:{ labels:{{range(1,actual_values|length+1)|list|tojson}}, datasets:[
+                    {label:'Actual',data:{{actual_values|tojson}},borderColor:'#16a34a',backgroundColor:'rgba(22,163,74,.1)',borderWidth:2,fill:true},
+                    {label:'Predicted',data:{{predicted_values|tojson}},borderColor:'#dc2626',borderWidth:2,borderDash:[5,5],fill:false}
+                ]}, options:{responsive:true,maintainAspectRatio:false}
+            });
+        </script>
+        {% endif %}
+    </div>
 </body>
 </html>
