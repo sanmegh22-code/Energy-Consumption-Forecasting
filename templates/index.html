@@ -40,14 +40,14 @@
                 <h3>Train (Predefined Data)</h3>
                 <form action="/train_predefined" method="post" style="margin-bottom:20px">
                     <div class="form-group"><label>Select Algorithm</label>
-                        <select name="model_type"><option value="RandomForest">Random Forest</option><option value="GradientBoosting">Gradient Boosting</option></select>
+                        <select name="model_type"><option value="LinearRegression">Linear Regression</option></select>
                     </div><button type="submit">Train Model</button>
                 </form>
             </div>
             <div class="panel">
                 <h3>Train (Custom Dataset)</h3>
                 <form action="/upload" method="post" enctype="multipart/form-data">
-                    <div class="form-group"><label>Select Algorithm</label><select name="model_type"><option value="RandomForest">Random Forest</option><option value="GradientBoosting">Gradient Boosting</option></select></div>
+                    <div class="form-group"><label>Select Algorithm</label><select name="model_type"><option value="LinearRegression">Linear Regression</option></select></div>
                     <div class="form-group"><input type="file" name="dataset" accept=".csv,.xlsx"></div>
                     <button type="submit">Upload & Train</button>
                 </form>
@@ -122,8 +122,7 @@
         <script>
             Chart.defaults.color='#64748b'; Chart.defaults.font.family="'Inter',sans-serif";
             new Chart(document.getElementById('Chart'),{ type:'line',
-                data:{ labels:{{range(1,actual_values|length+1)|list|tojson}}, datasets:[
-                    {label:'Actual',data:{{actual_values|tojson}},borderColor:'#16a34a',backgroundColor:'rgba(22,163,74,.1)',borderWidth:2,fill:true},
+                data:{ labels:{{range(1,actual_values|length+1)|list|tojson}}, datasets:[{label:'Actual',data:{{actual_values|tojson}},borderColor:'#16a34a',backgroundColor:'rgba(22,163,74,.1)',borderWidth:2,fill:true},
                     {label:'Predicted',data:{{predicted_values|tojson}},borderColor:'#dc2626',borderWidth:2,borderDash:[5,5],fill:false}
                 ]}, options:{responsive:true,maintainAspectRatio:false}
             });

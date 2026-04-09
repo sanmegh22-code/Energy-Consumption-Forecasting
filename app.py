@@ -1,7 +1,7 @@
 from flask import Flask, render_template, request, send_file
 import pandas as pd, os, pickle, generate_report
 from sklearn.model_selection import train_test_split
-from sklearn.ensemble import RandomForestRegressor, GradientBoostingRegressor
+from sklearn.linear_model import LinearRegression
 from sklearn.metrics import r2_score
 from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, Image
 from reportlab.lib.styles import getSampleStyleSheet
@@ -24,12 +24,12 @@ def render_idx(**kw):
     return render_template("index.html", **{**state, 'predicted_value': None, 'actual_value': None, 
                                             'error': None, 'error_percent': None, 'result': None, 'message': None, **kw})
 
-def train_model(data, model_type="RandomForest"):
+def train_model(data, model_type="LinearRegression"):
     state['dataset_hints'] = {col: f"{data[col].min():.1f} - {data[col].max():.1f}" for col in ["T1", "RH_1", "T2", "RH_2"]}
     X, y = data[["T1", "RH_1", "T2", "RH_2"]], data["Appliances"]
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
     
-    model = GradientBoostingRegressor(n_estimators=100, random_state=42) if model_type == "GradientBoosting" else RandomForestRegressor(n_estimators=100, random_state=42)
+    model = LinearRegression()
     model.fit(X_train, y_train)
     y_pred = model.predict(X_test)
     
@@ -51,7 +51,7 @@ def home(): return render_idx()
 
 @app.route("/train_predefined", methods=["POST"])
 def train_predefined():
-    m_type = request.form.get("model_type", "RandomForest")
+    m_type = request.form.get("model_type", "LinearRegression")
     merged_file = "energydata_master.csv"
     data_file = merged_file if os.path.exists(merged_file) else "energydata_complete.csv"
     train_model(pd.read_csv(data_file, encoding="latin1"), m_type)
@@ -59,7 +59,7 @@ def train_predefined():
 
 @app.route("/upload", methods=["POST"])
 def upload():
-    file, m_type = request.files.get("dataset"), request.form.get("model_type", "RandomForest")
+    file, m_type = request.files.get("dataset"), request.form.get("model_type", "LinearRegression")
     if not file: return render_idx(message="No file selected")
     path = os.path.join(app.config["UPLOAD_FOLDER"], file.filename)
     file.save(path)
