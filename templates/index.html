@@ -30,6 +30,7 @@
         @media (max-width:768px){.grid{grid-template-columns:1fr}}
     </style>
 </head>
+
 <body>
     <div class="header"><h1>Energy Forecasting</h1><div class="subtitle">AI-powered appliance energy consumption estimation</div></div>
     {% if message %}<div class="msg">{{ message }}</div>{% endif %}
@@ -44,6 +45,9 @@
                     </div><button type="submit">Train Model</button>
                 </form>
             </div>
+            <button>
+                
+            </button>
             <div class="panel">
                 <h3>Train (Custom Dataset)</h3>
                 <form action="/upload" method="post" enctype="multipart/form-data">
@@ -128,6 +132,32 @@
             });
         </script>
         {% endif %}
+    </div>
+
+    <div class="grid" style="margin-top:40px; margin-bottom:40px">
+        <div class="panel full" style="padding:40px">
+            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:30px;text-align:left">
+                <div>
+                    <h3 style="border-bottom:none;margin-bottom:15px;padding-bottom:0;font-size:1.2rem">About Us</h3>
+                    <p style="color:var(--t-m);font-size:.95rem;line-height:1.6;margin:0">We are dedicated to providing state-of-the-art machine learning solutions for energy consumption forecasting. Our goal is to help users optimize energy usage and promote sustainability through intelligent AI-powered estimations.</p>
+                </div>
+                <div>
+                    <h3 style="border-bottom:none;margin-bottom:15px;padding-bottom:0;font-size:1.2rem">Creator Info</h3>
+                    <p style="color:var(--t-m);font-size:.95rem;margin:8px 0"><strong>Developed By:</strong> Sanmegh & Team</p>
+                    <p style="color:var(--t-m);font-size:.95rem;margin:8px 0"><strong>Project:</strong> Mini Project</p>
+                    <p style="color:var(--t-m);font-size:.95rem;margin:8px 0"><strong>Tech Stack:</strong> Python, Flask, Scikit-learn</p>
+                </div>
+                <div>
+                    <h3 style="border-bottom:none;margin-bottom:15px;padding-bottom:0;font-size:1.2rem">Contact</h3>
+                    <p style="color:var(--t-m);font-size:.95rem;margin:8px 0"><strong>Email:</strong> contact@energyforecast.local</p>
+                    <p style="color:var(--t-m);font-size:.95rem;margin:8px 0"><strong>Phone:</strong> +91 98765 43210</p>
+                    <p style="color:var(--t-m);font-size:.95rem;margin:8px 0"><a href="#" style="color:var(--p);text-decoration:none;font-weight:600;transition:.2s">Visit our GitHub repository &rarr;</a></p>
+                </div>
+            </div>
+            <div style="text-align:center;margin-top:40px;padding-top:20px;border-top:1px solid var(--c-bd);color:var(--t-m);font-size:.85rem">
+                &copy; 2026 Energy Consumption Forecasting System. All rights reserved.
+            </div>
+        </div>
     </div>
 </body>
 </html>
